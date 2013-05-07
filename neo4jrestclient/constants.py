@@ -41,3 +41,8 @@ POSITION = "position"
 # Indexes
 INDEX_EXACT = "exact"
 INDEX_FULLTEXT = "fulltext"
+# Transactions
+TX_GET = "GET"
+TX_PUT = "PUT"
+TX_POST = "POST"
+TX_DELETE = "DELETE"

@@ -159,6 +159,14 @@ Others functions over 'relationships' attribute are possible. Like get all,
 incoming or outgoing relationships (typed or not)::
 
   >>> rels = n1.relationships.all()
+  <Neo4j Iterable: Relationship>
+
+In order improve the performance of the 'neo4jrestclient', minimizing the 
+number of HTTP requests that are made, all the functions that should return
+list of objects like Nodes, Relationships, Paths or Positions, they actually
+return an Iterable object that extends the Python 'list' type::
+
+  >>> rels = n1.relationships.all()[:]
   [<Neo4j Relationship: http://localhost:7474/db/data/relationship/35843>,
    <Neo4j Relationship: http://localhost:7474/db/data/relationship/35840>,
    <Neo4j Relationship: http://localhost:7474/db/data/relationship/35841>,
@@ -171,16 +179,32 @@ incoming or outgoing relationships (typed or not)::
    <Neo4j Relationship: http://localhost:7474/db/data/relationship/10>,
    <Neo4j Relationship: http://localhost:7474/db/data/relationship/9>]
   
-  >>> rels = n1.relationships.incoming(types=["Knows"])
+  >>> rels = n1.relationships.incoming(types=["Knows"])[:]
   [<Neo4j Relationship: http://localhost:7474/db/data/relationship/35843>,
    <Neo4j Relationship: http://localhost:7474/db/data/relationship/35840>,
    <Neo4j Relationship: http://localhost:7474/db/data/relationship/11>,
    <Neo4j Relationship: http://localhost:7474/db/data/relationship/10>,
    <Neo4j Relationship: http://localhost:7474/db/data/relationship/9>]
   
-  >>> rels = n1.relationships.outgoing(["Knows", "Loves"])
+  >>> rels = n1.relationships.outgoing(["Knows", "Loves"])[:]
   [<Neo4j Relationship: http://localhost:7474/db/data/relationship/35842>,
    <Neo4j Relationship: http://localhost:7474/db/data/relationship/35847>]
+
+There's a shortcut to access to the list of all relationships::
+
+  >>> rels = n1.relationships.all()[2]
+  <Neo4j Relationship: http://localhost:7474/db/data/relationship/47>
+
+It's the same to::
+
+  >>> rels = n1.relationships[2]
+  <Neo4j Relationship: http://localhost:7474/db/data/relationship/47>
+
+And::
+
+  >>> rels = n1.relationships.get(2)
+  <Neo4j Relationship: http://localhost:7474/db/data/relationship/47>
+
 
 
 Traversals
@@ -208,7 +232,7 @@ Added way (more ''pythonic'')::
   >>> n1.relationships.create("Knows", n2, since=1970)
   <Neo4j Relationship: http://localhost:7474/db/data/relationship/36009>
   
-  >>> n1.traverse(types=[neo4jrestclient.Undirected.Knows])
+  >>> n1.traverse(types=[neo4jrestclient.Undirected.Knows])[:]
   [<Neo4j Node: http://localhost:7474/db/data/node/15880>]
 
 
@@ -246,7 +270,7 @@ using the convenience methods::
   
   >>> i1.add("key", "value", n2)
   
-  >>> i1["key"]["value"]
+  >>> i1["key"]["value"][:]
   [<Neo4j Node: http://localhost:7474/db/data/node/1>,
    <Neo4j Node: http://localhost:7474/db/data/node/2>]
 
@@ -267,14 +291,14 @@ Advanced queries are also supported if the index is created with the type
 
   >>> i1["places"]["Tijuana"] = n2
   
-  >>> i1.query("surnames", "do*")
+  >>> i1.query("surnames", "do*")[:]
   [<Neo4j Node: http://localhost:7474/db/data/node/295>,
    <Neo4j Node: http://localhost:7474/db/data/node/296>]
 
 ...or by using the DSL described by lucene-querybuilder_ to support boolean
 operations and nested queries::
 
-  >>> i1.query(Q('surnames','do*') & Q('places','Tijuana'))
+  >>> i1.query(Q('surnames','do*') & Q('places','Tijuana'))[:]
   [<Neo4j Node: http://localhost:7474/db/data/node/295>]
 
 Deleting nodes from an index::
@@ -297,11 +321,12 @@ The server plugins are supported as extensions of GraphDatabase, Node or
 Relationship objects::
 
   >>> gdb.extensions
-  {u'GetAll': <Neo4j ExtensionModule: [u'get_all_nodes', u'getAllRelationships']>}
+  {u'GetAll': <Neo4j ExtensionModule: [u'get_all_nodes',
+                                       u'getAllRelationships']>}
   >>> gdb.extensions.GetAll
   <Neo4j ExtensionModule: [u'get_all_nodes', u'getAllRelationships']>
   
-  >>> gdb.extensions.GetAll.getAllRelationships()
+  >>> gdb.extensions.GetAll.getAllRelationships()[:]
   
   [<Neo4j Relationship: http://localhost:7474/db/data/relationship/0>,
    <Neo4j Relationship: http://localhost:7474/db/data/relationship/1>,
@@ -318,7 +343,10 @@ An example using extensions over nodes::
   >>> n1 = gdb.nodes.get(0)
   
   >>> n1.extensions
-  {u'DepthTwo': <Neo4j ExtensionModule: [u'nodesOnDepthTwo', u'relationshipsOnDepthTwo', u'pathsOnDepthTwo']>, u'ShortestPath': <Neo4j ExtensionModule: [u'shortestPath']>}
+  {u'DepthTwo': <Neo4j ExtensionModule: [u'nodesOnDepthTwo',
+                                         u'relationshipsOnDepthTwo',
+                                         u'pathsOnDepthTwo']>,
+   u'ShortestPath': <Neo4j ExtensionModule: [u'shortestPath']>}
   
   >>> n2 = gdb.nodes.get(1)
   
@@ -334,22 +362,145 @@ An example using extensions over nodes::
     u'name': u'target',
     u'optional': False,
     u'type': u'node'},
-   {u'description': u'The relationship types to follow when searching for the shortest path(s). Order is insignificant, if omitted all types are followed.',
+   {u'description': u'The relationship types to follow when searching for ...',
     u'name': u'types',
     u'optional': True,
     u'type': u'strings'},
-   {u'description': u'The maximum path length to search for, default value (if omitted) is 4.',
+   {u'description': u'The maximum path length to search for, ...',
     u'name': u'depth',
     u'optional': True,
     u'type': u'integer'}]
 
 
 
-Transaction
------------
+Transactions
+------------
 
-Currently, the transaction support is not implemented in Neo4j REST server, so
-the Python client is not able to provide it.
+Currently, the transaction support is not complete in this client, although
+a work in progress is being carried out, and hopefully the capacity to
+handle objects created in the same transaction will be done::
+
+Basic usage for deletion::
+
+  >>> n = gdb.nodes.create()
+  
+  >>> n["age"] = 25
+  
+  >>> n["place"] = "Houston"
+  
+  >>> n.properties
+  {'age': 25, 'place': 'Houston'}
+  
+  >>> with gdb.transaction():
+     ....:         n.delete("age")
+     ....: 
+  
+  >>> n.properties
+  {u'place': u'Houston'}
+
+
+When a transaction is performed, the values of the properties of the objects
+are updated automatically. However, this can be controled by hand adding a
+parameter in the transaction::
+
+  >>> n = gdb.nodes.create()
+  
+  >>> n["age"] = 25
+  
+  >>> with gdb.transaction(update=False):
+     ....:         n.delete("age")
+     ....: 
+  
+  >>> n.properties
+  {'age': 25}
+  
+  >>> n.update()
+  
+  >>> n.properties
+  {}
+
+
+Apart from update or deletion of properties, there is also creation. In this
+case, the object just created is returned through a 'TransactionOperationProxy'
+object, which is automatically converted in the proper object when the
+transaction ends. This is the second part of the commit process and a parameter
+in the transaction can be added to avoid the commit::
+
+  >>> n1 = gdb.nodes.create()
+  
+  >>> n2 = gdb.nodes.create()
+  
+  >>> with gdb.transaction(commit=False) as tx:
+     .....:         for i in range(1, 11):
+     .....:             n1.relationships.create("relation_%s" % i, n2)
+     .....: 
+  
+  >>> len(n1.relationships)
+  0
+
+The 'commit' method of the transaction object returns 'True' if there's no any
+fail. Otherwose, it returns 'None'::
+
+  >>> tx.commit()
+  True
+  
+  >>> len(n1.relationships)
+  10
+
+
+In order to avoid the need of setting the transaction variable, 'neo4jrestclient'
+uses a global variable to handle all the transactions. The name of the variable
+can be changed using de options::
+
+  >>> client.options.TX_NAME = "_tx"  # Default value
+
+
+And this behaviour can be disabled adding the right param in the transaction:
+'using_globals'. Even is possible (although not very recommendable) to handle
+different transactions in the same time and control when they are commited.
+There are many ways to set the transaction of a intruction (operation)::
+
+  >>> n = gdb.nodes.create()
+  
+  >>> n["age"] = 25
+  
+  >>> n["name"] = "John"
+  
+  >>> n["place"] = "Houston"
+  
+  >>> with gdb.transaction(commit=False, using_globals=False) as tx1, \
+     ....:      gdb.transaction(commit=False, using_globals=False) as tx2:
+     ....:         n.delete("age", tx=tx1)
+     ....:     n["name"] = tx2("Jonathan")
+     ....:     n["place", tx2] = "Toronto"
+     ....: 
+  
+  >>> "age" in n.properties
+  True
+  
+  >>> tx1.commit()
+  True
+  
+  >>> "age" in n.properties
+  False
+  
+  >>> n["name"] == "John"
+  True
+  
+  >>> n["place"] == "Houston"
+  True
+  
+  >>> tx2.commit()
+  True
+  
+  >>> n["name"] == "John"
+  False
+  
+  >>> n["place"] == "Houston"
+  False
+
+
+
 
 
 .. _neo4j.py: http://components.neo4j.org/neo4j.py/
